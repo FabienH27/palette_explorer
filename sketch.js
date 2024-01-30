@@ -15,9 +15,12 @@ var b;
 
 let colors = []; // Array to store colors
 
+let dragging = false;
+let offsetX, offsetY;
+
 function setup() {
   createCanvas(1600, 600);
-  rectMode(CORNERS);
+  rectMode("corners");
 
   for (let i = 0; i < 50; i++) {
     colors[i] = [random(255), random(255), random(255)];
@@ -28,8 +31,9 @@ function draw() {
   x2 = mouseX;
   y2 = mouseY;
   background(200);
+
   noStroke();
-  if (mouseIsPressed && !editMode) {
+  if (mouseIsPressed && !editMode && !dragging) {
     rect(x, y, x2, y2);
   }
   cursor("auto");
@@ -87,7 +91,6 @@ function enableEditMode(rectangleId, verticeId, positionX, positionY) {
 }
 
 function mouseDragged() {
-  // fill("black");
   if (editMode) {
     const rect = rectangles[selectedRectangle];
 
@@ -108,22 +111,38 @@ function mouseDragged() {
         break;
     }
   } else {
-    drawMode = true;
+    if (dragging) {
+      checkOverlap();
+
+      //Apply offset when moving the cube
+      rectangles[selectedRectangle].x = mouseX - offsetX;
+      rectangles[selectedRectangle].y = mouseY - offsetY;
+      rectangles[selectedRectangle].x2 =
+        rectangles[selectedRectangle].x + rectangles[selectedRectangle].width;
+      rectangles[selectedRectangle].y2 =
+        rectangles[selectedRectangle].y + rectangles[selectedRectangle].height;
+    } else {
+      drawMode = true;
+    }
   }
 }
 
 function mousePressed() {
+  if (checkOverlap()) {
+    dragging = true;
+    //Calculate initial offset
+    offsetX = mouseX - rectangles[selectedRectangle].x;
+    offsetY = mouseY - rectangles[selectedRectangle].y;
+  }
+
   x = mouseX;
   y = mouseY;
   editMode = false;
-
-  if(checkOverlap()){
-    console.log("clicked on rect");
-  }
-
 }
 
 function mouseReleased() {
+  dragging = false;
+
   if (
     !editMode &&
     Math.abs(x - x2) > 25 &&
@@ -132,7 +151,14 @@ function mouseReleased() {
   ) {
     randomizeColors();
     drawMode = false;
-    rectangles.push({ x: x, y: y, x2: x2, y2: y2 });
+    rectangles.push({
+      x: x,
+      y: y,
+      x2: x2,
+      y2: y2,
+      width: x2 - x,
+      height: y2 - y,
+    });
   }
 }
 
