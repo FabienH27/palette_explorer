@@ -93,38 +93,28 @@ function draw() {
     let saturationValue = map(mouseY, 0, height, 100, 0);
 
     selectedSwatchRects.forEach((rect) => {
-      colors[rect][0] = hueValue;
-      colors[rect][1] = saturationValue;
-      rectangles[rect][0] = hueValue;
-      rectangles[rect][1] = saturationValue;
+      rectangles[rect].color[0] = hueValue;
+      rectangles[rect].color[1] = saturationValue;
     });
-
-    // colors[selectedSwatchRect][0] = hueValue;
-    // colors[selectedSwatchRect][1] = saturationValue;
   }
 }
 
+//handle brightness
 function mouseWheel(event) {
   if (swatchMode) {
     if (event.deltaY > 0) {
       //scroll down
       selectedSwatchRects.forEach((rect) => {
-        if (colors[rect][2] >= 0) {
-          colors[rect][2] -= 3;
+        if (rectangles[rect].color[2] >= 0) {
+          rectangles[rect].color[2] -= 3;
         }
       });
-      // if(colors[selectedSwatchRect][2] >= 0){
-      //   colors[selectedSwatchRect][2] -= 3;
-      // }
     } else {
       selectedSwatchRects.forEach((rect) => {
-        if (colors[rect][2] <= 100) {
-          colors[rect][2] += 3;
+        if (rectangles[rect].color[2] <= 100) {
+          rectangles[rect].color[2] += 3;
         }
       });
-      // if(colors[selectedSwatchRect][2] <= 100){
-      //   colors[selectedSwatchRect][2] += 3;
-      // }
     }
   }
 }
@@ -176,18 +166,20 @@ function mouseDragged() {
 
 function doubleClicked() {
   swatchMode = true;
-  checkOverlap();
-  selectedSwatchRects.push(hoveredRectangle);
+  if (checkOverlap()) {
+    selectedSwatchRects = [hoveredRectangle];
+  }
 }
 
 function mousePressed() {
+  // checkOverlap();
   if (swatchMode) {
-    if (checkOverlap()) {
-      //over a rectangle
-      selectedSwatchRects.push(hoveredRectangle);
-    } else {
-      selectedSwatchRects.splice(hoveredRectangle, 1);
-    }
+    // if (checkOverlap()) {
+    //   //over a rectangle
+    //   selectedSwatchRects.push(hoveredRectangle);
+    // } else {
+    //   selectedSwatchRects.splice(hoveredRectangle, 1);
+    // }
 
     swatchMode = false;
   }
@@ -195,10 +187,13 @@ function mousePressed() {
   //over a rectangle
   if (checkOverlap()) {
     const item = rectangles[hoveredRectangle];
+
     rectangles.copyWithin(hoveredRectangle, hoveredRectangle + 1);
     rectangles.pop();
     rectangles.push(item);
-    hoveredRectangle = rectangles.length - 1;
+
+    hoveredRectangle = rectangles.indexOf(item);
+    // selectedSwatchRects = [rectangles.indexOf(item)];
 
     dragging = true;
     //Calculate initial offset
@@ -243,11 +238,33 @@ function checkOverlap() {
   const isInside = (rectangle, i) => {
     hoveredRectangle = i;
 
+    // hoveredRectangle = rectangles.length - 1;
     const leftSide = min(rectangle.x, rectangle.x2);
     const rightSide = max(rectangle.x, rectangle.x2);
 
     const upperBound = min(rectangle.y, rectangle.y2);
     const lowerBound = max(rectangle.y, rectangle.y2);
+
+    return (
+      mouseX > leftSide &&
+      mouseX < rightSide &&
+      mouseY > upperBound &&
+      mouseY < lowerBound
+    );
+  };
+  return rectangles.some(isInside);
+}
+
+function checkOverlap2() {
+  const isInside = (rectangle, i) => {
+    // hoveredRectangle = rectangles.length - 1;
+    const leftSide = min(rectangle.x, rectangle.x2);
+    const rightSide = max(rectangle.x, rectangle.x2);
+
+    const upperBound = min(rectangle.y, rectangle.y2);
+    const lowerBound = max(rectangle.y, rectangle.y2);
+
+    hoveredRectangle = i;
 
     return (
       mouseX > leftSide &&
