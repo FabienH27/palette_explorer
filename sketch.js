@@ -7,6 +7,9 @@ let editMode = false;
 let drawMode = false;
 let swatchMode = false;
 
+let dragging = false;
+let preventDrag = false;
+
 let hoveredRectangle = -1;
 let selectedRectangleEdge = -1;
 let selectedSwatchRect = -1;
@@ -17,14 +20,13 @@ let brightness;
 
 let colors = []; // Array to store colors
 
-let dragging = false;
 let offsetX, offsetY;
 
 function setup() {
   const canvas = createCanvas(windowWidth - 50, 700);
-  canvas.parent('sketch-holder');
+  canvas.parent("sketch-holder");
   rectMode("corners");
-  colorMode(HSB, 360,100,100);
+  colorMode(HSB, 360, 100, 100);
 
   for (let i = 0; i < 50; i++) {
     colors[i] = [random(360), random(100), random(80) + 20];
@@ -41,11 +43,11 @@ function draw() {
     rect(x, y, x2, y2);
   }
   cursor("auto");
-  hoveredRectangle = -1;
+  // hoveredRectangle = -1;
   for (let i = 0; i < rectangles.length; ++i) {
     let rectangle = rectangles[i];
 
-    fill(colors[i] ?? "white");
+    fill(rectangle.color ?? "white");
     rect(rectangle.x, rectangle.y, rectangle.x2, rectangle.y2);
 
     //bottom right
@@ -85,38 +87,38 @@ function draw() {
     }
   }
 
-  //Hue variation
-  if(swatchMode){
+  //Hue & saturation variation
+  if (swatchMode) {
     let hueValue = map(mouseX, 0, width, 0, 360);
     let saturationValue = map(mouseY, 0, height, 100, 0);
 
-    selectedSwatchRects.forEach(rect => {
+    selectedSwatchRects.forEach((rect) => {
       colors[rect][0] = hueValue;
-      colors[rect][1] = saturationValue;      
+      colors[rect][1] = saturationValue;
+      rectangles[rect][0] = hueValue;
+      rectangles[rect][1] = saturationValue;
     });
 
     // colors[selectedSwatchRect][0] = hueValue;
     // colors[selectedSwatchRect][1] = saturationValue;
   }
-  
 }
 
-function mouseWheel(event){
-  if(swatchMode){
-
-    if(event.deltaY > 0){
+function mouseWheel(event) {
+  if (swatchMode) {
+    if (event.deltaY > 0) {
       //scroll down
-      selectedSwatchRects.forEach(rect => {
-        if(colors[rect][2] >= 0){
+      selectedSwatchRects.forEach((rect) => {
+        if (colors[rect][2] >= 0) {
           colors[rect][2] -= 3;
         }
       });
       // if(colors[selectedSwatchRect][2] >= 0){
       //   colors[selectedSwatchRect][2] -= 3;
       // }
-    }else{
-      selectedSwatchRects.forEach(rect => {
-        if(colors[rect][2] <= 100){
+    } else {
+      selectedSwatchRects.forEach((rect) => {
+        if (colors[rect][2] <= 100) {
           colors[rect][2] += 3;
         }
       });
@@ -125,9 +127,7 @@ function mouseWheel(event){
       // }
     }
   }
-
 }
-
 
 function enableEditMode(rectangleId, verticeId, positionX, positionY) {
   editMode = true;
@@ -138,36 +138,36 @@ function enableEditMode(rectangleId, verticeId, positionX, positionY) {
 }
 
 function mouseDragged() {
-  if (editMode) {
-    const rect = rectangles[hoveredRectangle];
-
-    rect.width = rect.x2 - rect.x;
-    rect.height = rect.y2 - rect.y;
+  const rectangle = rectangles[hoveredRectangle];
+  if (editMode && !dragging) {
+    rectangle.width = rectangle.x2 - rectangle.x;
+    rectangle.height = rectangle.y2 - rectangle.y;
     switch (selectedRectangleEdge) {
       case 0:
-        [rect.x, rect.y] = [mouseX, mouseY];
+        [rectangle.x, rectangle.y] = [mouseX, mouseY];
         break;
       case 1:
-        [rect.x, rect.y2] = [mouseX, mouseY];
+        [rectangle.x, rectangle.y2] = [mouseX, mouseY];
         break;
       case 2:
-        [rect.x2, rect.y] = [mouseX, mouseY];
+        [rectangle.x2, rectangle.y] = [mouseX, mouseY];
         break;
       case 3:
-        [rect.x2, rect.y2] = [mouseX, mouseY];
+        [rectangle.x2, rectangle.y2] = [mouseX, mouseY];
         break;
       default:
         break;
     }
   } else {
-    if (dragging) {
-      checkOverlap();
-      rectangles[hoveredRectangle].x = mouseX - offsetX;
-      rectangles[hoveredRectangle].y = mouseY - offsetY;
-      rectangles[hoveredRectangle].x2 =
-        rectangles[hoveredRectangle].x + rectangles[hoveredRectangle].width;
-      rectangles[hoveredRectangle].y2 =
-        rectangles[hoveredRectangle].y + rectangles[hoveredRectangle].height;
+    if (dragging && !editMode) {
+      drawMode = false;
+      preventDrag = true;
+
+      rectangle.x = mouseX - offsetX;
+      rectangle.y = mouseY - offsetY;
+
+      rectangle.x2 = rectangle.x + rectangle.width;
+      rectangle.y2 = rectangle.y + rectangle.height;
     } else {
       drawMode = true;
     }
@@ -181,56 +181,60 @@ function doubleClicked() {
 }
 
 function mousePressed() {
-  console.log("mouse presed");
-  if(swatchMode){
-    if(checkOverlap()){
+  if (swatchMode) {
+    if (checkOverlap()) {
       //over a rectangle
       selectedSwatchRects.push(hoveredRectangle);
-    }else{
+    } else {
       selectedSwatchRects.splice(hoveredRectangle, 1);
     }
 
     swatchMode = false;
-    // selectedSwatchRects = [];
   }
 
+  //over a rectangle
   if (checkOverlap()) {
-    // if(swatchMode){
-    //   selectedSwatchRects.push(hoveredRectangle);
-    // }
-
+    const item = rectangles[hoveredRectangle];
+    rectangles.copyWithin(hoveredRectangle, hoveredRectangle + 1);
+    rectangles.pop();
+    rectangles.push(item);
+    hoveredRectangle = rectangles.length - 1;
 
     dragging = true;
     //Calculate initial offset
     offsetX = mouseX - rectangles[hoveredRectangle].x;
     offsetY = mouseY - rectangles[hoveredRectangle].y;
-  }else{
-    selectedSwatchRects = []
+  } else {
+    selectedSwatchRects = [];
   }
 
   x = mouseX;
   y = mouseY;
   editMode = false;
+  selectedRectangleEdge = -1;
 }
 
 function mouseReleased() {
   dragging = false;
+  preventDrag = false;
 
   if (
     !editMode &&
     Math.abs(x - x2) > 25 &&
     Math.abs(y - y2) > 25 &&
-    !checkOverlap()
+    !checkOverlap() &&
+    !dragging
   ) {
     drawMode = false;
 
     rectangles.push({
       x: min(x, x2),
-      y: min(y,y2),
-      x2: max(x2,x),
-      y2: max(y2,y),
+      y: min(y, y2),
+      x2: max(x2, x),
+      y2: max(y2, y),
       width: abs(x2 - x),
       height: abs(y2 - y),
+      color: colors[rectangles.length],
     });
   }
 }
@@ -238,11 +242,18 @@ function mouseReleased() {
 function checkOverlap() {
   const isInside = (rectangle, i) => {
     hoveredRectangle = i;
+
+    const leftSide = min(rectangle.x, rectangle.x2);
+    const rightSide = max(rectangle.x, rectangle.x2);
+
+    const upperBound = min(rectangle.y, rectangle.y2);
+    const lowerBound = max(rectangle.y, rectangle.y2);
+
     return (
-      mouseX > rectangle.x &&
-      mouseX < rectangle.x2 &&
-      mouseY > rectangle.y &&
-      mouseY < rectangle.y2
+      mouseX > leftSide &&
+      mouseX < rightSide &&
+      mouseY > upperBound &&
+      mouseY < lowerBound
     );
   };
   return rectangles.some(isInside);
