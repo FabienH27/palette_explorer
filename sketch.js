@@ -10,13 +10,10 @@ let swatchMode = false;
 let dragging = false;
 let preventDrag = false;
 
-let hoveredRectangle = -1;
+let selectedRectangle = -1;
 let selectedRectangleEdge = -1;
-let selectedSwatchRect = -1;
 
 let selectedSwatchRects = [];
-
-let brightness;
 
 let colors = []; // Array to store colors
 
@@ -42,8 +39,6 @@ function draw() {
   if (mouseIsPressed && !editMode && !dragging) {
     rect(x, y, x2, y2);
   }
-  cursor("auto");
-  // hoveredRectangle = -1;
   for (let i = 0; i < rectangles.length; ++i) {
     let rectangle = rectangles[i];
 
@@ -52,7 +47,7 @@ function draw() {
 
     //bottom right
     if (
-      !drawMode &&
+      !dragging && !drawMode &&
       Math.abs(rectangle.x2 - x2) < 20 &&
       Math.abs(rectangle.y2 - y2) < 20
     ) {
@@ -61,7 +56,7 @@ function draw() {
 
     //top right
     if (
-      !drawMode &&
+      !dragging && !drawMode &&
       Math.abs(rectangle.x2 - x2) < 20 &&
       Math.abs(rectangle.y - y2) < 20
     ) {
@@ -70,7 +65,7 @@ function draw() {
 
     //bottom left
     if (
-      !drawMode &&
+      !dragging && !drawMode &&
       Math.abs(rectangle.x - x2) < 20 &&
       Math.abs(rectangle.y2 - y2) < 20
     ) {
@@ -79,7 +74,7 @@ function draw() {
 
     //top left
     if (
-      !drawMode &&
+      !dragging && !drawMode &&
       Math.abs(rectangle.x - x2) < 20 &&
       Math.abs(rectangle.y - y2) < 20
     ) {
@@ -121,14 +116,13 @@ function mouseWheel(event) {
 
 function enableEditMode(rectangleId, verticeId, positionX, positionY) {
   editMode = true;
-  hoveredRectangle = rectangleId;
+  selectedRectangle = rectangleId;
   selectedRectangleEdge = verticeId;
-  cursor("crosshair");
   circle(positionX, positionY, 20);
 }
 
 function mouseDragged() {
-  const rectangle = rectangles[hoveredRectangle];
+  const rectangle = rectangles[selectedRectangle];
   if (editMode && !dragging) {
     rectangle.width = rectangle.x2 - rectangle.x;
     rectangle.height = rectangle.y2 - rectangle.y;
@@ -149,7 +143,7 @@ function mouseDragged() {
         break;
     }
   } else {
-    if (dragging && !editMode) {
+    if (dragging && allowDragging && !editMode) {
       drawMode = false;
       preventDrag = true;
 
@@ -164,42 +158,43 @@ function mouseDragged() {
   }
 }
 
+let hoveredRectangle = -1; 
+let allowDragging = true;
+
+function mouseMoved(){
+  if(checkOverlap()){
+    hoveredRectangle = selectedRectangle;
+  }
+}
+
 function doubleClicked() {
   swatchMode = true;
+  allowDragging = false;
   if (checkOverlap()) {
-    selectedSwatchRects = [hoveredRectangle];
+    selectedSwatchRects.push(selectedRectangle);
   }
 }
 
 function mousePressed() {
-  // checkOverlap();
-  if (swatchMode) {
-    // if (checkOverlap()) {
-    //   //over a rectangle
-    //   selectedSwatchRects.push(hoveredRectangle);
-    // } else {
-    //   selectedSwatchRects.splice(hoveredRectangle, 1);
-    // }
-
-    swatchMode = false;
-  }
-
   //over a rectangle
   if (checkOverlap()) {
-    const item = rectangles[hoveredRectangle];
+    const item = rectangles[selectedRectangle];
 
-    rectangles.copyWithin(hoveredRectangle, hoveredRectangle + 1);
-    rectangles.pop();
-    rectangles.push(item);
+    if(allowDragging){
+      rectangles.copyWithin(selectedRectangle, selectedRectangle + 1);
+      rectangles.pop();
+      rectangles.push(item);
+      selectedRectangle = rectangles.indexOf(item);
+    }
 
-    hoveredRectangle = rectangles.indexOf(item);
-    // selectedSwatchRects = [rectangles.indexOf(item)];
 
     dragging = true;
     //Calculate initial offset
-    offsetX = mouseX - rectangles[hoveredRectangle].x;
-    offsetY = mouseY - rectangles[hoveredRectangle].y;
+    offsetX = mouseX - rectangles[selectedRectangle].x;
+    offsetY = mouseY - rectangles[selectedRectangle].y;
   } else {
+    swatchMode = false;
+    allowDragging = true;
     selectedSwatchRects = [];
   }
 
@@ -234,16 +229,17 @@ function mouseReleased() {
   }
 }
 
+/**
+ * check if mouse is over a rectangle. Always returns the rectangle with the highest index
+ */
 function checkOverlap() {
   const isInside = (rectangle, i) => {
-    hoveredRectangle = i;
+    const leftSide = Math.min(rectangle.x, rectangle.x2);
+    const rightSide = Math.max(rectangle.x, rectangle.x2);
+    const upperBound = Math.min(rectangle.y, rectangle.y2);
+    const lowerBound = Math.max(rectangle.y, rectangle.y2);
 
-    // hoveredRectangle = rectangles.length - 1;
-    const leftSide = min(rectangle.x, rectangle.x2);
-    const rightSide = max(rectangle.x, rectangle.x2);
-
-    const upperBound = min(rectangle.y, rectangle.y2);
-    const lowerBound = max(rectangle.y, rectangle.y2);
+    selectedRectangle = rectangles.indexOf(rectangle);
 
     return (
       mouseX > leftSide &&
@@ -252,26 +248,21 @@ function checkOverlap() {
       mouseY < lowerBound
     );
   };
-  return rectangles.some(isInside);
+
+  return findLastIndexMatching(isInside) !== -1;
 }
 
-function checkOverlap2() {
-  const isInside = (rectangle, i) => {
-    // hoveredRectangle = rectangles.length - 1;
-    const leftSide = min(rectangle.x, rectangle.x2);
-    const rightSide = max(rectangle.x, rectangle.x2);
-
-    const upperBound = min(rectangle.y, rectangle.y2);
-    const lowerBound = max(rectangle.y, rectangle.y2);
-
-    hoveredRectangle = i;
-
-    return (
-      mouseX > leftSide &&
-      mouseX < rightSide &&
-      mouseY > upperBound &&
-      mouseY < lowerBound
-    );
-  };
-  return rectangles.some(isInside);
+/**
+ *
+ * @param array to perform the action on
+ * @param predicate function applied to each element that should returns true or false
+ * @returns
+ */
+function findLastIndexMatching(predicate) {
+  for (let i = rectangles.length - 1; i >= 0; i--) {
+    if (predicate(rectangles[i])) {
+      return i;
+    }
+  }
+  return -1; // Return -1 if no element matches the predicate
 }
