@@ -2,11 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <title>Sketch</title>
 
-    <link rel="stylesheet" type="text/css" href="style.css">
+    <link rel="stylesheet" type="text/css" href="style.css" />
 
     <script src="libraries/p5.min.js"></script>
   </head>
@@ -14,20 +14,54 @@
   <body>
     <script src="sketch.js"></script>
 
-    <!-- <h1>Palette Explorer</h1> -->
+    <h1 class="title">
+      <span>Palette Explorer</span>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke-width="1.5"
+        stroke="currentColor"
+        class="icon"
+        onclick="toggleMenu()"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"
+        />
+      </svg>
+    </h1>
 
-    <div id="sketch-holder">
+    <div id="sketch-holder"></div>
 
-    </div>
-
-    <div style="display: none;">
-      <h2>Instructions : </h2>
+    <div id="tutorial" style="display: none;">
+      <h2>Instructions :</h2>
       <p>- Drag mouse to draw rectangles</p>
       <p>- Adjust their width with their respective corners</p>
       <p>- Move a rectangle by dragging the mouse over it</p>
-      <p>- Double click on a rectangle to change its HSL</p>
-      <p>- Double click on another rectangle to change them at the same time. </p>
+      <p>- To modify colors: there are 2 steps required:</p>
+      <p>- Double click to add a rectangle to the selection</p>
+      <p>
+        - Double click on another rectangle to change them both.
+      </p>
+      <p>
+        - Right click anywhere and move the mouse to change the tint of the color (X axis : Hue, Y axis: Saturation, Mouse wheel: Lightness)
+      </p>
       <p>- Click anywhere else to validate your choice</p>
+      <p>- Click on any rectangle to bring it to the foreground</p>
     </div>
   </body>
+
+  <script>
+    function toggleMenu() {
+      const tutorial = document.getElementById("tutorial");
+
+      if (tutorial.style.display == "none") {
+        tutorial.style.display = "block";
+      } else {
+        tutorial.style.display = "none";
+      }
+    }
+  </script>
 </html>

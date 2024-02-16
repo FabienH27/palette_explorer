@@ -6,9 +6,9 @@ let pointer;
 let editMode = false;
 let drawMode = false;
 let swatchMode = false;
-
+let hoveredRectangle = -1;
+let allowDragging = true;
 let dragging = false;
-let preventDrag = false;
 
 let selectedRectangle = -1;
 let selectedRectangleEdge = -1;
@@ -20,10 +20,12 @@ let colors = []; // Array to store colors
 let offsetX, offsetY;
 
 function setup() {
-  const canvas = createCanvas(windowWidth - 50, 700);
+  const canvas = createCanvas(windowWidth - 50, windowHeight - 50);
   canvas.parent("sketch-holder");
   rectMode("corners");
   colorMode(HSB, 360, 100, 100);
+
+  document.addEventListener("contextmenu", (event) => event.preventDefault());
 
   for (let i = 0; i < 50; i++) {
     colors[i] = [random(360), random(100), random(80) + 20];
@@ -47,7 +49,8 @@ function draw() {
 
     //bottom right
     if (
-      !dragging && !drawMode &&
+      !dragging &&
+      !drawMode &&
       Math.abs(rectangle.x2 - x2) < 20 &&
       Math.abs(rectangle.y2 - y2) < 20
     ) {
@@ -56,7 +59,8 @@ function draw() {
 
     //top right
     if (
-      !dragging && !drawMode &&
+      !dragging &&
+      !drawMode &&
       Math.abs(rectangle.x2 - x2) < 20 &&
       Math.abs(rectangle.y - y2) < 20
     ) {
@@ -65,7 +69,8 @@ function draw() {
 
     //bottom left
     if (
-      !dragging && !drawMode &&
+      !dragging &&
+      !drawMode &&
       Math.abs(rectangle.x - x2) < 20 &&
       Math.abs(rectangle.y2 - y2) < 20
     ) {
@@ -74,7 +79,8 @@ function draw() {
 
     //top left
     if (
-      !dragging && !drawMode &&
+      !dragging &&
+      !drawMode &&
       Math.abs(rectangle.x - x2) < 20 &&
       Math.abs(rectangle.y - y2) < 20
     ) {
@@ -84,14 +90,45 @@ function draw() {
 
   //Hue & saturation variation
   if (swatchMode) {
-    let hueValue = map(mouseX, 0, width, 0, 360);
-    let saturationValue = map(mouseY, 0, height, 100, 0);
+    if (movedX > 0) {
+      //move right
+      selectedSwatchRects.forEach((rectangle) => {
+        rectangles[rectangle].color[0] =
+          (rectangles[rectangle].color[0] + 2) % 360;
+      });
+    } else if (movedX < 0) {
+      //move left
+      selectedSwatchRects.forEach((rectangle) => {
+        rectangles[rectangle].color[0] =
+          (rectangles[rectangle].color[0] - 2) % 360;
+      });
+    }
 
-    selectedSwatchRects.forEach((rect) => {
-      rectangles[rect].color[0] = hueValue;
-      rectangles[rect].color[1] = saturationValue;
-    });
+    if (movedY > 0) {
+      //move down
+      selectedSwatchRects.forEach((rectangle) => {
+        rectangles[rectangle].color[1] = min(
+          rectangles[rectangle].color[1] - 1,
+          height
+        );
+      });
+    } else if (movedY < 0) {
+      //move up
+      selectedSwatchRects.forEach((rectangle) => {
+        rectangles[rectangle].color[1] = min(
+          rectangles[rectangle].color[1] + 1,
+          height
+        );
+      });
+    }
   }
+}
+
+function keyPressed(){
+    exitPointerLock();
+    swatchMode = false;
+    wasSwatching = true;
+    allowDragging = true;
 }
 
 //handle brightness
@@ -145,7 +182,6 @@ function mouseDragged() {
   } else {
     if (dragging && allowDragging && !editMode) {
       drawMode = false;
-      preventDrag = true;
 
       rectangle.x = mouseX - offsetX;
       rectangle.y = mouseY - offsetY;
@@ -153,60 +189,74 @@ function mouseDragged() {
       rectangle.x2 = rectangle.x + rectangle.width;
       rectangle.y2 = rectangle.y + rectangle.height;
     } else {
-      drawMode = true;
     }
   }
 }
 
-let hoveredRectangle = -1; 
-let allowDragging = true;
-
-function mouseMoved(){
-  if(checkOverlap()){
+function mouseMoved() {
+  if (checkOverlap()) {
+    editMode = false;
     hoveredRectangle = selectedRectangle;
   }
 }
 
 function doubleClicked() {
-  swatchMode = true;
   allowDragging = false;
   if (checkOverlap()) {
     selectedSwatchRects.push(selectedRectangle);
   }
 }
 
+let wasSwatching = false;
+
 function mousePressed() {
   //over a rectangle
-  if (checkOverlap()) {
-    const item = rectangles[selectedRectangle];
-
-    if(allowDragging){
-      rectangles.copyWithin(selectedRectangle, selectedRectangle + 1);
-      rectangles.pop();
-      rectangles.push(item);
-      selectedRectangle = rectangles.indexOf(item);
-    }
-
-
-    dragging = true;
-    //Calculate initial offset
-    offsetX = mouseX - rectangles[selectedRectangle].x;
-    offsetY = mouseY - rectangles[selectedRectangle].y;
-  } else {
-    swatchMode = false;
+  if (swatchMode) {
     allowDragging = true;
-    selectedSwatchRects = [];
+    wasSwatching = true;
+    exitPointerLock();
+  }
+
+  swatchMode = false;
+
+  if (mouseButton === RIGHT) {
+    swatchMode = true;
+    requestPointerLock();
+  }
+
+  if (!editMode) {
+    if (checkOverlap()) {
+      const item = rectangles[selectedRectangle];
+
+      if (wasSwatching) {
+        selectedSwatchRects = [];
+      }
+
+      if (allowDragging && !wasSwatching) {
+        rectangles.copyWithin(selectedRectangle, selectedRectangle + 1);
+        rectangles.pop();
+        rectangles.push(item);
+        selectedRectangle = rectangles.indexOf(item);
+        editMode = false;
+      }
+
+      dragging = true;
+
+      //Calculate initial offset
+      offsetX = mouseX - rectangles[selectedRectangle].x;
+      offsetY = mouseY - rectangles[selectedRectangle].y;
+    }
   }
 
   x = mouseX;
   y = mouseY;
   editMode = false;
   selectedRectangleEdge = -1;
+  wasSwatching = false;
 }
 
 function mouseReleased() {
   dragging = false;
-  preventDrag = false;
 
   if (
     !editMode &&
